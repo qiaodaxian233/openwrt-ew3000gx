@@ -81,32 +81,98 @@ d46e0a17ce3abcfc0972b00133ea0a00528cb5203c842fe1b3826cbdeb76ca4e  qiaodaxian-ew3
 
 ## 快速开始
 
-### 方式一：一键脚本（推荐）
+> ### ⚠️ 必须用 CH340 串口，不能用 sysupgrade
+>
+> **OpenWrt 的 `sysupgrade` 会破坏这台设备的 NOR flash：**
+>
+> 它走 UBI 路径，在 rootfs 区域（固件内 `0x440000` 偏移）写入 `UBI#` 头。
+> `mtdsplit_fit` 会把分区识别成 `ubi` 而不是 `rootfs`，
+> 内核挂载失败 → Kernel panic → 重启循环。
+>
+> **唯一正确的刷法：u-boot 的 `sf erase` + `sf write`。**
+
+### 需要准备
+
+| 东西 | 说明 |
+|---|---|
+| **CH340G USB-TTL** | 约 10 元，**电平必须 3.3V**（5V 可能烧 SoC） |
+| 杜邦线 3 根 | GND / TX / RX |
+| 网线 | 接路由器 LAN 口 |
+| 螺丝刀 + 电烙铁 | 拆机接 UART 焊盘 |
+
+**接线（TX/RX 交叉）：**
+
+```
+路由器 UART 焊盘        USB-TTL
+   GND      ──────────  GND
+   TX       ──────────  RX
+   RX       ──────────  TX
+```
+
+**串口参数：115200 8N1，无流控**
+
+### 一键刷机
 
 ```bash
 # 1. 装依赖
-pip install paramiko
+pip install pyserial
 
-# 2. 电脑连路由器（LAN 口或 WiFi "OpenWrt-5G"）
+# 2. 设置 PC IP（管理员 PowerShell）
+New-NetIPAddress -InterfaceAlias "以太网" -IPAddress 192.168.1.100 -PrefixLength 24
 
-# 3. 检查固件
-python flash.py --check
+# 3. 检查环境
+python flash_uboot.py --port COM4 --check
 
-# 4. 刷机（保留配置）
-python flash.py
-
-# 5. 或全新安装（不保留配置）
-python flash.py --no-keep
+# 4. 刷机（脚本会提示上电时机）
+python flash_uboot.py --port COM4
 ```
 
-脚本会：
-1. 校验固件（大小 / SHA256 / FIT 结构）
-2. 自动探测设备 IP
-3. 尝试 SSH 登录（内置口令列表）
-4. 备份当前配置到 `/tmp/`
-5. 上传固件并校验远端 SHA256
-6. 执行 `sysupgrade`
-7. 等待重启并验证品牌
+**脚本流程：**
+
+1. 校验固件（大小 / FIT 魔数 / SHA256 / 品牌串）
+2. 起 TFTP 服务器（0.0.0.0:69）
+3. 持续发空格抢 u-boot console（自动选 `0. U-Boot console`）
+4. **全量擦除 firmware 分区**（15 MB，约 110 秒）— 清掉 UBI 头
+5. 验证擦除结果（全 `0xFF`）
+6. TFTP 传固件到内存 `0x46000000`
+7. 验证 FIT 魔数 + Load Address `0x48000000`
+8. `sf write` 写入
+9. `cmp.b` 逐字节校验
+10. `reset` 并抓启动日志（自动检查 9 项指标）
+
+**参数：**
+
+| 参数 | 说明 |
+|---|---|
+| `--port COM4` | 串口号（设备管理器里看） |
+| `--check` | 只检查环境，不刷 |
+| `--no-erase` | 跳过全量擦除（已有正确固件时省 2 分钟） |
+| `--yes` | 跳过确认 |
+
+### 手动刷（脚本失败时）
+
+**抢 u-boot：** 上电时每 20ms 发空格，看到 `Boot Menu` 后选 `0. U-Boot console`
+
+```bash
+# u-boot 里执行
+sf probe 0
+sf erase 0x100000 0xF00000
+sf read 0x48000000 0x100000 0x10 && md.b 0x48000000 0x10    # 应全 ff
+
+setenv ipaddr 192.168.1.1
+setenv serverip 192.168.1.100
+setenv netmask 255.255.255.0
+ping 192.168.1.100
+
+tftpboot 0x46000000 qiaodaxian-ew3000gx-sysupgrade.bin
+iminfo 0x46000000                                            # Load Address 应为 0x48000000
+
+sf write 0x46000000 0x100000 0x8C0006                        # 大小见上一步 filesize
+sf read 0x48000000 0x100000 0x8C0006
+cmp.b 0x46000000 0x48000000 0x8C0006                         # 必须 "were the same"
+
+reset
+```
 
 ### 方式二：手动 SSH
 
@@ -288,7 +354,7 @@ ruijie,ew3000gx)
 .
 ├── README.md                      本文件
 ├── LICENSE                        GPL-2.0
-├── flash.py                       一键刷机脚本
+├── flash_uboot.py                 u-boot 刷机脚本（CH340 串口）
 ├── build_brand.sh                 品牌定制 + 重编脚本
 ├── device/
 │   ├── ew3000gx.mk                设备编译定义
