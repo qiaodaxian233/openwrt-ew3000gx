@@ -1,0 +1,15 @@
+# 统一换行
+* text=auto eol=lf
+
+# 二进制
+*.bin binary
+*.itb binary
+*.img binary
+*.png binary
+*.jpg binary
+*.zip binary
+
+# 脚本保持 LF
+*.sh text eol=lf
+*.py text eol=lf
+*.md text eol=lf

@@ -14,3 +14,8 @@ __pycache__/
 
 # 大文件（按需保留）
 *.bin.bak
+
+# 固件产物（放 Release，不进仓库）
+out/*.bin
+out/*.itb
+out/*.img
