@@ -2,10 +2,14 @@
 
 > 锐捷 EW3000GX（RG-EW3000GX）OpenWrt 24.10 移植固件 —— 完整中文界面
 
+[![Release](https://img.shields.io/github/v/release/qiaodaxian233/openwrt-ew3000gx?color=brightgreen&label=release)](https://github.com/qiaodaxian233/openwrt-ew3000gx/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/qiaodaxian233/openwrt-ew3000gx/total?color=blue)](https://github.com/qiaodaxian233/openwrt-ew3000gx/releases)
+[![Stars](https://img.shields.io/github/stars/qiaodaxian233/openwrt-ew3000gx?style=flat&color=yellow)](https://github.com/qiaodaxian233/openwrt-ew3000gx/stargazers)
+[![License](https://img.shields.io/badge/license-GPL--2.0-red)](https://github.com/qiaodaxian233/openwrt-ew3000gx/blob/main/LICENSE)
+
 ![Platform](https://img.shields.io/badge/platform-MediaTek%20MT7981-blue)
-![Version](https://img.shields.io/badge/OpenWrt-24.10-brightgreen)
+![OpenWrt](https://img.shields.io/badge/OpenWrt-24.10-brightgreen)
 ![Kernel](https://img.shields.io/badge/kernel-6.6.159-orange)
-![License](https://img.shields.io/badge/license-GPL--2.0-red)
 
 ---
 
@@ -52,6 +56,25 @@ mtd6  firmware        15 MB    0x100000    ✅ 刷这个
 mtd7  kernel         2.7 MB    0xA00000
 mtd8  rootfs        12.3 MB    0xC70000
 mtd9  rootfs_data    1.7 MB    0x1F00000
+```
+
+---
+
+## 📥 下载
+
+**最新固件：** [**Releases → v1.0**](https://github.com/qiaodaxian233/openwrt-ew3000gx/releases/latest)
+
+| 文件 | 大小 | 用途 |
+|---|---|---|
+| [qiaodaxian-ew3000gx-sysupgrade.bin](https://github.com/qiaodaxian233/openwrt-ew3000gx/releases/latest/download/qiaodaxian-ew3000gx-sysupgrade.bin) | 8.75 MB | **刷这个** |
+| [qiaodaxian-ew3000gx-initramfs.bin](https://github.com/qiaodaxian233/openwrt-ew3000gx/releases/latest/download/qiaodaxian-ew3000gx-initramfs.bin) | 8.38 MB | 内存试跑（不写 flash） |
+| [qiaodaxian-ew3000gx.manifest](https://github.com/qiaodaxian233/openwrt-ew3000gx/releases/latest/download/qiaodaxian-ew3000gx.manifest) | 4.7 KB | 软件包清单 |
+
+**SHA256：**
+
+```
+5ee079349d3f1315e2836cef04a29805ffb6467c1b97edcd353fc843fcbb6728  qiaodaxian-ew3000gx-sysupgrade.bin
+d46e0a17ce3abcfc0972b00133ea0a00528cb5203c842fe1b3826cbdeb76ca4e  qiaodaxian-ew3000gx-initramfs.bin
 ```
 
 ---
