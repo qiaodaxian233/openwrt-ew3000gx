@@ -1,0 +1,242 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Ruijie EW3000GX (RG-EW3000GX / EW3000GX-PRO)
+ *
+ * SoC   : MediaTek MT7981 (Filogic 820), 2x Cortex-A53 @ 1.3GHz
+ * RAM   : 256 MiB @ 0x40000000
+ * Flash : SPI-NOR 32 MiB (0x2000000), 64 KiB erase
+ *
+ * 全部数据来自设备实测：
+ *   /proc/device-tree/model      = "MediaTek MT7981 RFB"
+ *   /proc/device-tree/compatible = "mediatek,mt7981-spim-nor-rfb"
+ *   /proc/cmdline                = console=ttyS0,115200n1 loglevel=8 earlycon=uart8250,mmio32,0x11002000
+ *   /proc/mtd 分区表             = 见下方 partitions
+ *
+ * 与 RG-X30E 的关键差异：
+ *   X30E  = SPI-NAND 128MB + UBI + 双 FIP
+ *   EW3000GX = SPI-NOR 32MB + 固定分区 + 单 FIP + FIT 复合镜像
+ */
+
+/dts-v1/;
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+
+#include "mt7981.dtsi"
+
+/ {
+	aliases {
+		led-boot = &sysled_red;
+		led-failsafe = &sysled_red;
+		led-running = &sysled_green;
+		led-upgrade = &sysled_red;
+	};
+
+	memory {
+		reg = <0 0x40000000 0 0x10000000>;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,115200n1 loglevel=8 earlycon=uart8250,mmio32,0x11002000";
+	};
+
+	gpio-keys {
+		compatible = "gpio-keys";
+
+		button-reset {
+			label = "reset";
+			linux,code = <KEY_RESTART>;
+			gpios = <&pio 1 GPIO_ACTIVE_LOW>;
+		};
+
+		button-wps {
+			label = "wps";
+			linux,code = <KEY_WPS_BUTTON>;
+			gpios = <&pio 0 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	leds-gpio {
+		compatible = "gpio-leds";
+
+		mesh_led: led-0 {
+			label = "green:mesh";
+			gpios = <&pio 5 GPIO_ACTIVE_LOW>;
+		};
+
+		sysled_red: led-1 {
+			label = "red:status";
+			gpios = <&pio 13 GPIO_ACTIVE_LOW>;
+		};
+
+		sysled_green: led-2 {
+			label = "green:status";
+			gpios = <&pio 6 GPIO_ACTIVE_LOW>;
+		};
+	};
+};
+
+&crypto {
+	status = "okay";
+};
+
+&eth {
+	status = "okay";
+
+	gmac0: mac@0 {
+		compatible = "mediatek,eth-mac";
+		reg = <0>;
+		phy-mode = "2500base-x";
+
+		fixed-link {
+			speed = <2500>;
+			full-duplex;
+			pause;
+		};
+	};
+
+	gmac1: mac@1 {
+		compatible = "mediatek,eth-mac";
+		reg = <1>;
+		phy-mode = "2500base-x";
+
+		fixed-link {
+			speed = <2500>;
+			full-duplex;
+			pause;
+		};
+	};
+
+	mdio: mdio-bus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+};
+
+&mdio {
+	switch: switch@1f {
+		compatible = "mediatek,mt7531";
+		reg = <31>;
+		reset-gpios = <&pio 54 GPIO_ACTIVE_HIGH>;
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		interrupt-parent = <&pio>;
+		interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
+	};
+};
+
+&hnat {
+	mtketh-wan = "wan";
+	mtketh-lan = "lan";
+	mtketh-max-gmac = <1>;
+	status = "okay";
+};
+
+&spi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi0_flash_pins>;
+	status = "okay";
+
+	spi_nor: flash@0 {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "jedec,spi-nor";
+		reg = <0>;
+		spi-max-frequency = <52000000>;
+		spi-rx-bus-width = <4>;
+		spi-tx-bus-width = <4>;
+
+		partitions: partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "BL2";
+				reg = <0x0 0x40000>;
+				read-only;
+			};
+
+			partition@40000 {
+				label = "u-boot-env";
+				reg = <0x40000 0x10000>;
+			};
+
+			partition@50000 {
+				label = "Factory";
+				reg = <0x50000 0x10000>;
+				read-only;
+
+				nvmem-layout {
+					compatible = "fixed-layout";
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					eeprom_factory_0: eeprom@0 {
+						reg = <0x0 0x1000>;
+					};
+				};
+			};
+
+			partition@60000 {
+				label = "FIP";
+				reg = <0x60000 0x80000>;
+				read-only;
+			};
+
+			partition@E0000 {
+				label = "product_info";
+				reg = <0xE0000 0x10000>;
+				read-only;
+			};
+
+			partition@F0000 {
+				label = "kdump";
+				reg = <0xF0000 0x10000>;
+			};
+
+			partition@100000 {
+				label = "firmware";
+				reg = <0x100000 0xF00000>;
+
+				compatible = "denx,fit";
+				openwrt,fit-offset = <0x0>;
+			};
+		};
+	};
+};
+
+&pio {
+	spi0_flash_pins: spi0-pins {
+		mux {
+			function = "spi";
+			groups = "spi0", "spi0_wp_hold";
+		};
+
+		conf-pu {
+			pins = "SPI0_CS", "SPI0_HOLD", "SPI0_WP";
+			drive-strength = <8>;
+			bias-pull-up = <0>;
+		};
+
+		conf-pd {
+			pins = "SPI0_CLK", "SPI0_MOSI", "SPI0_MISO";
+			drive-strength = <8>;
+			bias-pull-down = <0>;
+		};
+	};
+};
+
+&wifi {
+	status = "okay";
+
+	nvmem-cells = <&eeprom_factory_0>;
+	nvmem-cell-names = "eeprom";
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&watchdog {
+	status = "okay";
+};

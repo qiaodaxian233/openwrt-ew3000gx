@@ -1,0 +1,16 @@
+# 编译产物
+bin/
+build_dir/
+staging_dir/
+tmp/
+logs/
+*.o
+*.a
+
+# 临时文件
+__pycache__/
+*.pyc
+.DS_Store
+
+# 大文件（按需保留）
+*.bin.bak
